@@ -6,6 +6,8 @@ All notable changes to the Orisun Go client will be documented in this file.
 
 - Added `GetServerInfo` for build, backend, node identity, and capability
   discovery.
+- Added `ListIndexes` and `GetIndex` for inspecting managed index definitions
+  and readiness.
 - Added create, import, list, and get APIs for dynamic consistency boundaries.
 - Regenerated protobuf bindings for the event-backed boundary catalog.
 - Updated the module and CI/release toolchains to Go 1.26.5.

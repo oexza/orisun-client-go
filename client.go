@@ -959,6 +959,35 @@ func (c *OrisunClient) DropIndex(ctx context.Context, request *eventstore.DropIn
 	return response, nil
 }
 
+// ListIndexes lists Orisun-managed indexes for a boundary.
+func (c *OrisunClient) ListIndexes(ctx context.Context, boundary string) (*eventstore.ListIndexesResponse, error) {
+	if strings.TrimSpace(boundary) == "" {
+		return nil, NewOrisunException("Boundary is required").AddContext("operation", "listIndexes")
+	}
+	response, err := c.client.ListIndexes(ctx, &eventstore.ListIndexesRequest{Boundary: boundary})
+	if err != nil {
+		return nil, c.handleAdminException(err, "listIndexes")
+	}
+	return response, nil
+}
+
+// GetIndex gets one Orisun-managed index definition.
+func (c *OrisunClient) GetIndex(ctx context.Context, boundary, name string) (*eventstore.GetIndexResponse, error) {
+	if strings.TrimSpace(boundary) == "" {
+		return nil, NewOrisunException("Boundary is required").AddContext("operation", "getIndex")
+	}
+	if strings.TrimSpace(name) == "" {
+		return nil, NewOrisunException("Index name is required").
+			AddContext("operation", "getIndex").
+			AddContext("boundary", boundary)
+	}
+	response, err := c.client.GetIndex(ctx, &eventstore.GetIndexRequest{Boundary: boundary, Name: name})
+	if err != nil {
+		return nil, c.handleAdminException(err, "getIndex")
+	}
+	return response, nil
+}
+
 // handleAdminException handles exceptions from admin operations
 func (c *OrisunClient) handleAdminException(err error, operation string) error {
 	st, ok := status.FromError(err)
