@@ -539,6 +539,18 @@ func (c *OrisunClient) Ping(ctx context.Context) error {
 	return nil
 }
 
+// GetServerInfo returns build, backend, node identity, and capability
+// information for the server that handles this call.
+func (c *OrisunClient) GetServerInfo(ctx context.Context) (*eventstore.GetServerInfoResponse, error) {
+	c.logger.Debug("Getting server information")
+
+	response, err := c.client.GetServerInfo(ctx, &eventstore.GetServerInfoRequest{})
+	if err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
 // HealthCheck performs a health check
 func (c *OrisunClient) HealthCheck(ctx context.Context, boundary string) (bool, error) {
 	c.logger.Debug("Performing health check")
