@@ -1106,6 +1106,30 @@ func TestRequestValidator_AdminRequests(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
+	t.Run("SetUserBoundaryPermissionsRequest", func(t *testing.T) {
+		err := validator.ValidateSetUserBoundaryPermissionsRequest(nil)
+		assert.ErrorContains(t, err, "cannot be nil")
+
+		err = validator.ValidateSetUserBoundaryPermissionsRequest(
+			&eventstore.SetUserBoundaryPermissionsRequest{Boundary: "orders"},
+		)
+		assert.ErrorContains(t, err, "User ID is required")
+
+		err = validator.ValidateSetUserBoundaryPermissionsRequest(
+			&eventstore.SetUserBoundaryPermissionsRequest{UserId: "user-1"},
+		)
+		assert.ErrorContains(t, err, "Boundary is required")
+
+		err = validator.ValidateSetUserBoundaryPermissionsRequest(
+			&eventstore.SetUserBoundaryPermissionsRequest{
+				UserId:      "user-1",
+				Boundary:    "orders",
+				Permissions: nil,
+			},
+		)
+		assert.NoError(t, err)
+	})
+
 	// Test ChangePasswordRequest validation
 	t.Run("ChangePasswordRequest", func(t *testing.T) {
 		err := validator.ValidateChangePasswordRequest(nil)

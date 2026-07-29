@@ -269,6 +269,25 @@ func (v *RequestValidator) ValidateDeleteUserRequest(request *eventstore.DeleteU
 	return nil
 }
 
+// ValidateSetUserBoundaryPermissionsRequest validates a boundary grant replacement.
+func (v *RequestValidator) ValidateSetUserBoundaryPermissionsRequest(
+	request *eventstore.SetUserBoundaryPermissionsRequest,
+) error {
+	if request == nil {
+		return NewOrisunException("SetUserBoundaryPermissionsRequest cannot be nil").
+			AddContext("operation", "setUserBoundaryPermissions")
+	}
+	if strings.TrimSpace(request.UserId) == "" {
+		return NewOrisunException("User ID is required").
+			AddContext("operation", "setUserBoundaryPermissions")
+	}
+	if strings.TrimSpace(request.Boundary) == "" {
+		return NewOrisunException("Boundary is required").
+			AddContext("operation", "setUserBoundaryPermissions")
+	}
+	return nil
+}
+
 // ValidateChangePasswordRequest validates a ChangePasswordRequest
 func (v *RequestValidator) ValidateChangePasswordRequest(request *eventstore.ChangePasswordRequest) error {
 	if request == nil {

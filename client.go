@@ -839,6 +839,23 @@ func (c *OrisunClient) ChangePassword(ctx context.Context, request *eventstore.C
 	return response, nil
 }
 
+// SetUserBoundaryPermissions replaces one user's permissions for a boundary.
+func (c *OrisunClient) SetUserBoundaryPermissions(
+	ctx context.Context,
+	request *eventstore.SetUserBoundaryPermissionsRequest,
+) (*eventstore.SetUserBoundaryPermissionsResponse, error) {
+	validator := NewRequestValidator()
+	if err := validator.ValidateSetUserBoundaryPermissionsRequest(request); err != nil {
+		return nil, err
+	}
+
+	response, err := c.adminClient.SetUserBoundaryPermissions(ctx, request)
+	if err != nil {
+		return nil, c.handleAdminException(err, "setUserBoundaryPermissions")
+	}
+	return response, nil
+}
+
 // ListUsers lists all users
 func (c *OrisunClient) ListUsers(ctx context.Context, request *eventstore.ListUsersRequest) (*eventstore.ListUsersResponse, error) {
 	// Validate request
