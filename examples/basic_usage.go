@@ -79,12 +79,12 @@ func main() {
 		},
 	}
 
-	saveRequest := &eventstore.SaveEventsRequest{
+	saveRequest := &eventstore.SaveEventsV2Request{
 		Boundary: "orisun_admin",
 		Events:   events,
 	}
 
-	writeResult, err := client.SaveEvents(ctx, saveRequest)
+	writeResult, err := client.SaveEventsV2(ctx, saveRequest)
 	if err != nil {
 		fmt.Printf("Failed to save events: %v\n", err)
 	} else {
