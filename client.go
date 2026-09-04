@@ -577,7 +577,9 @@ func (c *OrisunClient) HealthCheck(ctx context.Context, boundary string) (bool, 
 	return true, nil
 }
 
-// SaveEvents saves events to a stream
+// SaveEvents saves events to a boundary.
+//
+// Deprecated: use SaveEventsV2.
 func (c *OrisunClient) SaveEvents(ctx context.Context, request *eventstore.SaveEventsRequest) (*eventstore.WriteResult, error) {
 	// Validate request
 	validator := NewRequestValidator()
@@ -591,12 +593,31 @@ func (c *OrisunClient) SaveEvents(ctx context.Context, request *eventstore.SaveE
 	// Make the gRPC call
 	response, err := c.client.SaveEvents(ctx, request)
 	if err != nil {
-		return nil, c.handleSaveException(err)
+		return nil, c.handleSaveException(err, "saveEvents")
 	}
 
 	c.logger.Info("Successfully saved {} events ",
 		len(request.Events))
 
+	return response, nil
+}
+
+// SaveEventsV2 saves events after atomically validating every consistency observation.
+func (c *OrisunClient) SaveEventsV2(ctx context.Context, request *eventstore.SaveEventsV2Request) (*eventstore.WriteResult, error) {
+	validator := NewRequestValidator()
+	if err := validator.ValidateSaveEventsV2Request(request); err != nil {
+		return nil, err
+	}
+
+	c.logger.Debug("Saving {} events in boundary '{}' with {} consistency observations",
+		len(request.Events), request.Boundary, len(request.Consistency))
+
+	response, err := c.client.SaveEventsV2(ctx, request)
+	if err != nil {
+		return nil, c.handleSaveException(err, "saveEventsV2")
+	}
+
+	c.logger.Info("Successfully saved {} events", len(request.Events))
 	return response, nil
 }
 
@@ -665,11 +686,11 @@ func (c *OrisunClient) SubscribeToEvents(ctx context.Context, request *eventstor
 }
 
 // handleSaveException handles exceptions from SaveEvents operations
-func (c *OrisunClient) handleSaveException(err error) error {
+func (c *OrisunClient) handleSaveException(err error, operation string) error {
 	st, ok := status.FromError(err)
 	if !ok {
 		return NewOrisunExceptionWithCause("Failed to save events", err).
-			AddContext("operation", "saveEvents")
+			AddContext("operation", operation)
 	}
 
 	if st.Code() == codes.AlreadyExists {
@@ -678,14 +699,14 @@ func (c *OrisunClient) handleSaveException(err error) error {
 		if parseErr == nil {
 			return NewOptimisticConcurrencyExceptionWithCause(
 				st.Message(), expected, actual, err).
-				AddContext("operation", "saveEvents").
+				AddContext("operation", operation).
 				AddContext("expectedVersion", expected).
 				AddContext("actualVersion", actual)
 		}
 	}
 
 	return NewOrisunExceptionWithCause("Failed to save events", err).
-		AddContext("operation", "saveEvents").
+		AddContext("operation", operation).
 		AddContext("statusCode", st.Code().String()).
 		AddContext("statusDescription", st.Message())
 }

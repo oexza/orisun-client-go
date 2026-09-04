@@ -23,35 +23,76 @@ func (v *RequestValidator) ValidateSaveEventsRequest(request *eventstore.SaveEve
 			AddContext("operation", "saveEvents")
 	}
 
-	// Validate boundary
-	if strings.TrimSpace(request.Boundary) == "" {
-		return NewOrisunException("Boundary is required").
-			AddContext("operation", "saveEvents").
-			AddContext("request", "SaveEventsRequest")
+	return v.validateSaveRequest(request.Boundary, request.Events, "saveEvents", "SaveEventsRequest")
+}
+
+// ValidateSaveEventsV2Request validates a SaveEventsV2Request.
+func (v *RequestValidator) ValidateSaveEventsV2Request(request *eventstore.SaveEventsV2Request) error {
+	if request == nil {
+		return NewOrisunException("SaveEventsV2Request cannot be nil").
+			AddContext("operation", "saveEventsV2")
 	}
 
-	// Validate events
-	if len(request.Events) == 0 {
-		return NewOrisunException("At least one event is required").
-			AddContext("operation", "saveEvents").
-			AddContext("boundary", request.Boundary)
+	if err := v.validateSaveRequest(request.Boundary, request.Events, "saveEventsV2", "SaveEventsV2Request"); err != nil {
+		return err
 	}
 
-	// Validate each event
-	for i, event := range request.Events {
-		if err := v.validateEventToSave(event, i, request.Boundary); err != nil {
-			return err
+	for observationIndex, observation := range request.Consistency {
+		if observation == nil || observation.Query == nil || observation.Position == nil {
+			return NewOrisunException(fmt.Sprintf("Consistency observation at index %d must include query and position", observationIndex)).
+				AddContext("operation", "saveEventsV2").
+				AddContext("observationIndex", observationIndex).
+				AddContext("boundary", request.Boundary)
+		}
+		if len(observation.Query.Criteria) == 0 {
+			return NewOrisunException(fmt.Sprintf("Consistency observation at index %d must include at least one criterion", observationIndex)).
+				AddContext("operation", "saveEventsV2").
+				AddContext("observationIndex", observationIndex).
+				AddContext("boundary", request.Boundary)
+		}
+		for criterionIndex, criterion := range observation.Query.Criteria {
+			if criterion == nil || len(criterion.Tags) == 0 {
+				return NewOrisunException(fmt.Sprintf("Criterion at index %d in consistency observation %d must include at least one tag", criterionIndex, observationIndex)).
+					AddContext("operation", "saveEventsV2").
+					AddContext("observationIndex", observationIndex).
+					AddContext("criterionIndex", criterionIndex).
+					AddContext("boundary", request.Boundary)
+			}
 		}
 	}
 
 	return nil
 }
 
+func (v *RequestValidator) validateSaveRequest(
+	boundary string,
+	events []*eventstore.EventToSave,
+	operation string,
+	requestName string,
+) error {
+	if strings.TrimSpace(boundary) == "" {
+		return NewOrisunException("Boundary is required").
+			AddContext("operation", operation).
+			AddContext("request", requestName)
+	}
+	if len(events) == 0 {
+		return NewOrisunException("At least one event is required").
+			AddContext("operation", operation).
+			AddContext("boundary", boundary)
+	}
+	for i, event := range events {
+		if err := v.validateEventToSave(event, i, boundary, operation); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // validateEventToSave validates an EventToSave
-func (v *RequestValidator) validateEventToSave(event *eventstore.EventToSave, index int, boundary string) error {
+func (v *RequestValidator) validateEventToSave(event *eventstore.EventToSave, index int, boundary, operation string) error {
 	if event == nil {
 		return NewOrisunException(fmt.Sprintf("Event at index %d is nil", index)).
-			AddContext("operation", "saveEvents").
+			AddContext("operation", operation).
 			AddContext("eventIndex", index).
 			AddContext("boundary", boundary)
 	}
@@ -59,7 +100,7 @@ func (v *RequestValidator) validateEventToSave(event *eventstore.EventToSave, in
 	// Validate eventId
 	if strings.TrimSpace(event.EventId) == "" {
 		return NewOrisunException(fmt.Sprintf("Event at index %d is missing eventId", index)).
-			AddContext("operation", "saveEvents").
+			AddContext("operation", operation).
 			AddContext("eventIndex", index).
 			AddContext("boundary", boundary)
 	}
@@ -67,7 +108,7 @@ func (v *RequestValidator) validateEventToSave(event *eventstore.EventToSave, in
 	// Validate eventType
 	if strings.TrimSpace(event.EventType) == "" {
 		return NewOrisunException(fmt.Sprintf("Event at index %d is missing eventType", index)).
-			AddContext("operation", "saveEvents").
+			AddContext("operation", operation).
 			AddContext("eventIndex", index).
 			AddContext("boundary", boundary)
 	}
@@ -75,7 +116,7 @@ func (v *RequestValidator) validateEventToSave(event *eventstore.EventToSave, in
 	// Validate data
 	if strings.TrimSpace(event.Data) == "" {
 		return NewOrisunException(fmt.Sprintf("Event at index %d is missing data", index)).
-			AddContext("operation", "saveEvents").
+			AddContext("operation", operation).
 			AddContext("eventIndex", index).
 			AddContext("boundary", boundary)
 	}

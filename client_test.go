@@ -467,6 +467,60 @@ func TestClient_SaveEvents_Validation(t *testing.T) {
 	assert.Contains(t, err.Error(), "At least one event is required")
 }
 
+func TestClient_SaveEventsV2(t *testing.T) {
+	builder := NewClientBuilder()
+	client, err := builder.WithHost("localhost").Build()
+	require.NoError(t, err)
+	defer client.Close()
+
+	request := &eventstore.SaveEventsV2Request{
+		Boundary: "test-boundary",
+		Events: []*eventstore.EventToSave{{
+			EventId:   "test-1",
+			EventType: "TestEvent",
+			Data:      "{}",
+		}},
+		Consistency: []*eventstore.ConsistencyObservation{{
+			Query:    &eventstore.Query{Criteria: []*eventstore.Criterion{{Tags: []*eventstore.Tag{{Key: "orderId", Value: "order-1"}}}}},
+			Position: &eventstore.Position{CommitPosition: -1, PreparePosition: -1},
+		}},
+	}
+
+	_, err = client.SaveEventsV2(context.Background(), request)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Failed to save events")
+	assert.Contains(t, err.Error(), "operation=saveEventsV2")
+}
+
+func TestClient_SaveEventsV2_Validation(t *testing.T) {
+	validator := NewRequestValidator()
+
+	err := validator.ValidateSaveEventsV2Request(nil)
+	assert.ErrorContains(t, err, "SaveEventsV2Request cannot be nil")
+
+	err = validator.ValidateSaveEventsV2Request(&eventstore.SaveEventsV2Request{})
+	assert.ErrorContains(t, err, "Boundary is required")
+
+	request := &eventstore.SaveEventsV2Request{
+		Boundary: "test-boundary",
+		Events: []*eventstore.EventToSave{{
+			EventId:   "test-1",
+			EventType: "TestEvent",
+			Data:      "{}",
+		}},
+		Consistency: []*eventstore.ConsistencyObservation{{}},
+	}
+	err = validator.ValidateSaveEventsV2Request(request)
+	assert.ErrorContains(t, err, "must include query and position")
+
+	request.Consistency[0] = &eventstore.ConsistencyObservation{
+		Query:    &eventstore.Query{},
+		Position: &eventstore.Position{CommitPosition: -1, PreparePosition: -1},
+	}
+	err = validator.ValidateSaveEventsV2Request(request)
+	assert.ErrorContains(t, err, "must include at least one criterion")
+}
+
 // Test GetEvents method
 func TestClient_GetEvents(t *testing.T) {
 	builder := NewClientBuilder()
